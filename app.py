@@ -1,21 +1,77 @@
-from pySmartDL import SmartDL
+import re
 import requests
-
-# download video
-url = "https://vidstreamingcdn.com/cdn33/e91fb74f3f6a7033f024be131aaae542/EP.20.v1.1644590642.720p.mp4?mac=NURuFV7O0%2BRrQtsg3voSTEyscilgaXdFmRd42VdpHQI%3D&vip=117.205.178.116&expiry=1644599859685"
-url = "https://vidstreamingcdn.com/cdn33/e91fb74f3f6a7033f024be131aaae542/EP.20.v1.1644590642.1080p.mp4?mac=HDK0fnjBI8XZaOkBNG%2BVQ16e%2F1K0%2F1LMLyTNK9S4ocU%3D&vip=206.189.205.251&expiry=1644602295253"
-
-obj = SmartDL(url, dest="downloads")
-obj.start()
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad
+import base64
+import os
+from pySmartDL import SmartDL
 
 
-# Fetch the json
-url = "https://gogoplay.io/encrypt-ajax.php?id=r+mV06RiLSP0lwrA1tRa/Q==&time=98714738999384908221"
+def extract_id(url: str) -> str:
+    with requests.get(url) as response:
+        pattern = r"streaming\.php\?id=([\w]+)"
+        a = re.search(pattern, str(response.text))
+        return a.groups()[0]
 
-headers = {
-    "x-requested-with": "XMLHttpRequest"
-}
 
-resp = requests.get(url, headers=headers)
+def generate_hashed_url(video_id: str) -> str:
+    key = b"25746538592938396764662879833288"
+    random_number = b"9900686387599576"
 
-print(resp.status_code)
+    aes = AES.new(key, AES.MODE_CBC, random_number)
+    hashed_id = aes.encrypt(pad(video_id.encode(), 16))
+    encoded_hashed_id = base64.b64encode(hashed_id).decode()
+    return f'https://gogoplay.io/encrypt-ajax.php?id={encoded_hashed_id}&time=45{random_number.decode()}67'
+
+
+def get_download_url(data_url: str) -> list:
+    headers = {
+        "x-requested-with": "XMLHttpRequest"
+    }
+    with requests.get(data_url, headers=headers) as response:
+        response.raise_for_status()
+        return response.json()['source']
+
+
+def get_best_source(sources: list) -> dict:
+    source_ord = ["1080 P", "720 P", "480 P", "360 P", "Auto"]
+    source_data = {}
+
+    for source in sources:
+        source_data[source['label']] = source
+
+    for ord in source_ord:
+        if ord in source_data.keys():
+            return source_data[ord]
+
+    return
+
+
+def download_file(url, filename, dest):
+    if not os.path.isdir(dest):
+        os.makedirs(dest)
+
+    obj = SmartDL(url, dest=f"{dest}/{filename}")
+    obj.start()
+
+
+def extract_download(url, filename="", dest="downloads"):
+    video_id = extract_id(url)
+    data_url = generate_hashed_url(video_id)
+    video_source = get_download_url(data_url)
+    download_source = get_best_source(video_source)
+    download_file(download_source['file'], filename, dest=dest)
+
+
+def main():
+    print("Example Full URl: https://gogoplay.io/videos/shaonian-ge-xing-feng-hua-xue-yue-pian-episode-20")
+    print("Example Base URl: https://gogoplay.io/videos/shaonian-ge-xing-feng-hua-xue-yue-pian-episode-")
+    base_url = str(input("Enter the base url : "))
+    total_episode = int(input("Enter total episodes: "))
+
+    for i in range(1, total_episode + 1):
+        extract_download(f'{base_url}i')
+
+
+if __name__ == "__main__":
+    main()
