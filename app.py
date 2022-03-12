@@ -6,23 +6,32 @@ from Crypto.Util.Padding import pad
 import base64
 import os
 from pySmartDL import SmartDL
+import json
+
+key = b"25716538522938396164662278833288"
+iv = b"1285672383939852"
 
 
 def extract_id(url: str) -> str:
     with requests.get(url) as response:
         pattern = r"streaming\.php\?id=([\w]+)"
         a = re.search(pattern, str(response.text))
+        print(response.text)
         return a.groups()[0]
 
 
 def generate_hashed_url(video_id: str) -> str:
-    key = b"25746538592938396764662879833288"
-    random_number = b"9900686387599576"
-
-    aes = AES.new(key, AES.MODE_CBC, random_number)
+    aes = AES.new(key, AES.MODE_CBC, iv)
     hashed_id = aes.encrypt(pad(video_id.encode(), 16))
     encoded_hashed_id = base64.b64encode(hashed_id).decode()
-    return f'https://gogoplay.io/encrypt-ajax.php?id={encoded_hashed_id}&time=45{random_number.decode()}67'
+    return f'https://gogoplay.io/encrypt-ajax.php?id={encoded_hashed_id}'
+
+
+def decrypt_response(encrypted_data) -> dict:
+    def unpad(s): return s[:-ord(s[len(s) - 1:])]
+    aes = AES.new(key, AES.MODE_CBC, iv)
+    decrypted = unpad(aes.decrypt(base64.b64decode(encrypted_data))).decode()
+    return json.loads(decrypted)['source']
 
 
 def get_download_url(data_url: str) -> list:
@@ -31,7 +40,8 @@ def get_download_url(data_url: str) -> list:
     }
     with requests.get(data_url, headers=headers) as response:
         response.raise_for_status()
-        return response.json()['source']
+
+    return decrypt_response(response.json()["data"])
 
 
 def get_best_source(sources: list) -> dict:
@@ -68,13 +78,13 @@ def download_file(url, filename, dest):
 
 def extract_download(url, filename="", dest="downloads"):
     video_id = extract_id(url)
-    print("video_id", video_id)
+    # print("video_id", video_id)
     data_url = generate_hashed_url(video_id)
-    print("data_url", data_url)
+    # print("data_url", data_url)
     video_source = get_download_url(data_url)
-    print("video_source", video_source)
+    # print("video_source", video_source)
     download_source = get_best_source(video_source)
-    print("download_source", download_source)
+    # print("download_source", download_source)
     download_file(
         download_source['file'], f"{filename}.{download_source['type']}", dest=dest)
 
