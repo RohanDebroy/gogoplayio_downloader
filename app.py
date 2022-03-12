@@ -7,16 +7,17 @@ import base64
 import os
 from pySmartDL import SmartDL
 import json
+import cloudscraper
 
 key = b"25716538522938396164662278833288"
 iv = b"1285672383939852"
+scraper = cloudscraper.create_scraper()
 
 
 def extract_id(url: str) -> str:
-    with requests.get(url) as response:
+    with scraper.get(url) as response:
         pattern = r"streaming\.php\?id=([\w]+)"
         a = re.search(pattern, str(response.text))
-        print(response.text)
         return a.groups()[0]
 
 
@@ -24,7 +25,7 @@ def generate_hashed_url(video_id: str) -> str:
     aes = AES.new(key, AES.MODE_CBC, iv)
     hashed_id = aes.encrypt(pad(video_id.encode(), 16))
     encoded_hashed_id = base64.b64encode(hashed_id).decode()
-    return f'https://gogoplay.io/encrypt-ajax.php?id={encoded_hashed_id}'
+    return f'https://gogoplay4.com/encrypt-ajax.php?id={encoded_hashed_id}'
 
 
 def decrypt_response(encrypted_data) -> dict:
@@ -66,7 +67,7 @@ def download_file(url, filename, dest):
 
     request_args = {
         "headers": {
-            "referer": "https://gogoplay.io/streaming.php"
+            "referer": "https://gogoplay4.com/streaming.php"
         }
     }
 
