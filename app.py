@@ -1,5 +1,4 @@
 import re
-from tracemalloc import start
 import requests
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad
@@ -9,8 +8,9 @@ from pySmartDL import SmartDL
 import json
 import cloudscraper
 
-key = b"25716538522938396164662278833288"
-iv = b"1285672383939852"
+id_encrypt_key = b"93106165734640459728346589106791"
+iv = b"8244002440089157"
+video_response_decryption_key = b"97952160493714852094564712118349"
 scraper = cloudscraper.create_scraper()
 
 
@@ -22,15 +22,15 @@ def extract_id(url: str) -> str:
 
 
 def generate_hashed_url(video_id: str) -> str:
-    aes = AES.new(key, AES.MODE_CBC, iv)
+    aes = AES.new(id_encrypt_key, AES.MODE_CBC, iv)
     hashed_id = aes.encrypt(pad(video_id.encode(), 16))
     encoded_hashed_id = base64.b64encode(hashed_id).decode()
-    return f'https://gogoplay4.com/encrypt-ajax.php?id={encoded_hashed_id}'
+    return f'https://goload.pro/encrypt-ajax.php?id={encoded_hashed_id}&alias={video_id}'
 
 
 def decrypt_response(encrypted_data) -> dict:
     def unpad(s): return s[:-ord(s[len(s) - 1:])]
-    aes = AES.new(key, AES.MODE_CBC, iv)
+    aes = AES.new(video_response_decryption_key, AES.MODE_CBC, iv)
     decrypted = unpad(aes.decrypt(base64.b64decode(encrypted_data))).decode()
     return json.loads(decrypted)['source']
 
@@ -46,7 +46,7 @@ def get_download_url(data_url: str) -> list:
 
 
 def get_best_source(sources: list) -> dict:
-    source_ord = ["1080 P", "720 P", "480 P", "360 P", "Auto"]
+    source_ord = ["1080 P", "720 P", "480 P", "360 P", "hls P", "Auto"]
     # source_ord = ["720 P", "480 P", "360 P", "Auto"]
     source_data = {}
 
@@ -60,10 +60,20 @@ def get_best_source(sources: list) -> dict:
     return
 
 
+def download_m3u8(url, filename, dest,  cli="utils\m3u8dl_cli.exe"):
+    COMMAND = f'{cli} "{url}" --enableDelAfterDone --saveName "{filename}" --retryCount "3" --workDir "{dest}"'
+    print(COMMAND)
+    os.system(COMMAND)
+
+
 def download_file(url, filename, dest):
     if not os.path.isdir(dest):
         print(f"[Downloader] Creating Folder {dest}")
         os.makedirs(dest)
+
+    if "m3u8" in url:
+        download_m3u8(url, filename, dest)
+        return
 
     request_args = {
         "headers": {
@@ -97,6 +107,7 @@ def main():
     start_episode = input(
         "Enter Starting Episode No (press enter to start from episode 1): ")
     total_episode = int(input("Enter Last episodes No: "))
+    series_name = str(input("Enter the name of the series: "))
 
     if start_episode:
         start_episode = int(start_episode)
@@ -104,7 +115,8 @@ def main():
         start_episode = 1
 
     for i in range(start_episode, total_episode + 1):
-        extract_download(f'{base_url}{i}', filename=i)
+        extract_download(f'{base_url}{i}', filename=i,
+                         dest=f"downloads/{series_name}")
 
 
 if __name__ == "__main__":

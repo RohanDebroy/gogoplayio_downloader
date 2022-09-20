@@ -8,3 +8,16 @@ pySmartDL==1.3.4
 requests==2.27.1
 toml==0.10.2
 urllib3==1.26.8
+autopep8==1.6.0
+certifi==2021.10.8
+charset-normalizer==2.0.11
+cloudscraper==1.2.58
+idna==3.3
+pycodestyle==2.8.0
+pycryptodome==3.14.1
+pyparsing==3.0.7
+pySmartDL==1.3.4
+requests==2.27.1
+requests-toolbelt==0.9.1
+toml==0.10.2
+urllib3==1.26.8
