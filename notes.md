@@ -6,9 +6,7 @@ https://gogoplay.io/encrypt-ajax.php?id=VuqHMpup8jHDen7OfhJLoQ==&time=2399006863
 
 ```
 
-## Notes?
-
-This is just notes while I was reversing the encryption algorithm
+## Notes:
 
 ```
 const CryptoJS = require('crypto-js')
